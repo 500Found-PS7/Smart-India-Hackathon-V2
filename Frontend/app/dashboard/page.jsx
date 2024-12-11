@@ -304,8 +304,8 @@ export default function DashboardPage() {
               <DateTimeRangePicker
                 startDate={startDate}
                 endDate={endDate}
-                onStartDateChange={handleStartDateChange}
-                onEndDateChange={handleEndDateChange}
+                onStartDateChange={setStartDate}
+                onEndDateChange={setEndDate}
               />
             </div>
           </div>
