@@ -1,33 +1,61 @@
 import { useMemo } from 'react';
 import { ArrowUpIcon, ArrowDownIcon } from "lucide-react";
 
-export function LoadStats({ data }) {
+export function LoadStats({ data, previousData }) {
+  console.log('Current Data:', data);
+  console.log('Previous Data:', previousData);
+
   const stats = useMemo(() => {
     if (!data || data.length === 0) return {
       current: { value: 0, change: 0 },
       peak: { value: 0, change: 0 },
-      average: { value: 0, change: 0 },
-      accuracy: { value: 0, change: 0 }
+      average: { value: 0, change: 0 }
     };
 
+    // Current period values
     const loads = data.map(item => item.load);
+    const current = loads[loads.length - 1];
     const peak = Math.max(...loads);
     const average = Math.round(loads.reduce((a, b) => a + b, 0) / loads.length);
-    const current = loads[loads.length - 1];
 
-    // Calculate percentage changes (mock data for now)
-    const currentChange = 2.3;
-    const peakChange = 1.5;
-    const accuracyValue = 95.8;
-    const accuracyChange = 0.8;
+    // Previous period values (if available)
+    let currentChange = 0;
+    let peakChange = 0;
+
+    if (previousData && previousData.length > 0) {
+      const prevLoads = previousData.map(item => item.load);
+      const prevCurrent = prevLoads[prevLoads.length - 1];
+      const prevPeak = Math.max(...prevLoads);
+
+      // Calculate percentage changes
+      currentChange = prevCurrent ? ((current - prevCurrent) / prevCurrent) * 100 : 0;
+      peakChange = prevPeak ? ((peak - prevPeak) / prevPeak) * 100 : 0;
+
+      console.log('Calculating changes:', {
+        current,
+        prevCurrent,
+        currentChange,
+        peak,
+        prevPeak,
+        peakChange
+      });
+    }
 
     return {
-      current: { value: current, change: currentChange },
-      peak: { value: peak, change: peakChange },
-      average: { value: average, change: null },
-      accuracy: { value: accuracyValue, change: accuracyChange }
+      current: { 
+        value: current, 
+        change: Number(currentChange.toFixed(1)) 
+      },
+      peak: { 
+        value: peak, 
+        change: Number(peakChange.toFixed(1)) 
+      },
+      average: { 
+        value: average, 
+        change: null 
+      }
     };
-  }, [data]);
+  }, [data, previousData]);
 
   const StatCard = ({ title, value, change, unit = "MW" }) => (
     <div className="bg-zinc-900/50 p-4 rounded-lg">
@@ -66,12 +94,6 @@ export function LoadStats({ data }) {
         title="Average Load" 
         value={stats.average.value} 
         change={null}
-      />
-      <StatCard 
-        title="Forecast Accuracy" 
-        value={stats.accuracy.value} 
-        change={stats.accuracy.change}
-        unit="%"
       />
     </div>
   );

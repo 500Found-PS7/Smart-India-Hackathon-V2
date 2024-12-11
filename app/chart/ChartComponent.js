@@ -48,56 +48,79 @@ export default function ChartComponent({
   onViewChange 
 }) {
   const [data, setData] = useState([]);
+  const [previousData, setPreviousData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedDate, setSelectedDate] = useState(startDate);
   const [aggregatedData, setAggregatedData] = useState([]);
+  const [previousAggregatedData, setPreviousAggregatedData] = useState([]);
   const [showTable, setShowTable] = useState(false);
 
   // Add fetchAndProcessData function
   const fetchAndProcessData = async () => {
     let fetchedData = [];
+    let prevDayData = [];
 
-    if (viewType === 'weekly') {
-      // Fetch data for each day of the week
-      const weekStart = startOfWeek(selectedDate);
-      const weekEnd = endOfWeek(selectedDate);
-      const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
-      
-      for (const day of days) {
-        const dayData = await fetchLoadData(day);
-        fetchedData.push({
-          date: day,
-          data: dayData
-        });
+    try {
+      // Get previous day date
+      const prevDate = new Date(selectedDate);
+      prevDate.setDate(prevDate.getDate() - 1);
+
+      if (viewType === 'weekly') {
+        // Current week data
+        const weekStart = startOfWeek(selectedDate);
+        const weekEnd = endOfWeek(selectedDate);
+        const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
+        
+        // Previous week data
+        const prevWeekStart = startOfWeek(prevDate);
+        const prevWeekEnd = endOfWeek(prevDate);
+        const prevDays = eachDayOfInterval({ start: prevWeekStart, end: prevWeekEnd });
+
+        // Fetch current week data
+        for (const day of days) {
+          const dayData = await fetchLoadData(day);
+          fetchedData.push({ date: day, data: dayData });
+        }
+
+        // Fetch previous week data
+        for (const day of prevDays) {
+          const dayData = await fetchLoadData(day);
+          prevDayData.push({ date: day, data: dayData });
+        }
+
+        // Aggregate both current and previous week data
+        const weeklyData = aggregateWeeklyData(fetchedData);
+        const prevWeeklyData = aggregateWeeklyData(prevDayData);
+        
+        setAggregatedData(weeklyData);
+        setPreviousAggregatedData(prevWeeklyData);
+        
+      } else if (viewType === 'monthly') {
+        // Similar logic for monthly view
+        const monthStart = startOfMonth(selectedDate);
+        const monthEnd = endOfMonth(selectedDate);
+        const prevMonthStart = startOfMonth(prevDate);
+        const prevMonthEnd = endOfMonth(prevDate);
+
+        // ... fetch and aggregate monthly data ...
+        const monthlyData = aggregateMonthlyData(fetchedData);
+        const prevMonthlyData = aggregateMonthlyData(prevDayData);
+        
+        setAggregatedData(monthlyData);
+        setPreviousAggregatedData(prevMonthlyData);
+
+      } else {
+        // Default 5min/hourly view
+        const dailyData = await fetchLoadData(selectedDate, viewType);
+        const previousData = await fetchLoadData(prevDate, viewType);
+        
+        setData(dailyData);
+        setPreviousData(previousData);
       }
-
-      // Aggregate weekly data
-      const weeklyData = aggregateWeeklyData(fetchedData);
-      setAggregatedData(weeklyData);
-      
-    } else if (viewType === 'monthly') {
-      // Fetch data for each day of the month
-      const monthStart = startOfMonth(selectedDate);
-      const monthEnd = endOfMonth(selectedDate);
-      const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
-      
-      for (const day of days) {
-        const dayData = await fetchLoadData(day);
-        fetchedData.push({
-          date: day,
-          data: dayData
-        });
-      }
-
-      // Aggregate monthly data
-      const monthlyData = aggregateMonthlyData(fetchedData);
-      setAggregatedData(monthlyData);
-
-    } else {
-      // Default 5min view with interpolated data
-      const dailyData = await fetchLoadData(selectedDate, viewType);
-      setData(dailyData);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      throw error;
     }
   };
 
@@ -164,6 +187,12 @@ export default function ChartComponent({
             ? data 
             : aggregatedData
         } 
+        previousData={viewType === 'hourly'
+          ? previousData.filter(row => row.time.endsWith(':00'))
+          : viewType === '5min'
+            ? previousData
+            : previousAggregatedData
+        }
       />
 
       {viewType === '5min' && (

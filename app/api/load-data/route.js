@@ -50,7 +50,7 @@ export async function GET(request) {
       );
     }
 
-    // Parse rows
+    // Parse rows with additional logging
     const rows = loadTable.querySelectorAll('tr');
     let data = rows
       .map(row => {
@@ -60,9 +60,19 @@ export async function GET(request) {
         const values = cells.map(cell => cell.text.trim());
         if (!values[0].match(/^\d{2}:\d{2}/)) return null;
 
+        // Parse and validate time
+        const [hours, minutes] = values[0].split(':').map(num => num.padStart(2, '0'));
+        const formattedTime = `${hours}:${minutes}`;
+        const load = parseFloat(values[1]);
+
+        // Debug log for evening hours
+        if (parseInt(hours) >= 18 && parseInt(hours) <= 21) {
+          console.log('Evening data point:', { time: formattedTime, load });
+        }
+
         return {
-          time: values[0],
-          load: parseFloat(values[1]) || 0,
+          time: formattedTime,
+          load: load || 0,
           brpl: parseFloat(values[2]) || 0,
           bypl: parseFloat(values[3]) || 0,
           ndpl: parseFloat(values[4]) || 0,
@@ -71,6 +81,9 @@ export async function GET(request) {
         };
       })
       .filter(Boolean);
+
+    console.log(`Processed ${data.length} data points`);
+    console.log('Sample data points:', data.slice(0, 2));
 
     // If 5min interval is requested, interpolate the data
     if (interval === '5min') {
@@ -91,11 +104,7 @@ export async function GET(request) {
   } catch (error) {
     console.error('API Error:', error);
     return NextResponse.json(
-      { 
-        error: 'Failed to fetch load data', 
-        details: error.message,
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-      }, 
+      { error: error.message }, 
       { status: 500 }
     );
   }

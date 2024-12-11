@@ -1,6 +1,5 @@
 "use client";
 import { GlobeDemo } from "./Hero";
-// import Features, { BentoDemo, FeaturesSectionDemo } from "./Features";
 
 function Content() {
   return (

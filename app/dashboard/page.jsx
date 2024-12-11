@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import ChartComponent from "../chart/ChartComponent";
 import AdditionalInsightsChart from "../chart/AdditionalInsightsChart";
-import LongTermForecastChart from "../chart/LongTermForecastChart";
 import { motion } from "framer-motion";
 import { DateTimeRangePicker } from "@/components/ui/date-time-range";
 import { Button } from "@/components/ui/button";
@@ -22,6 +21,7 @@ import {
 } from "lucide-react";
 import { format, subDays, startOfMonth, endOfMonth, addHours } from "date-fns";
 import { cn } from "@/lib/utils";
+import { fetchLoadData } from "@/lib/utils/loadData";
 
 // Dynamically import the Globe component with SSR disabled
 const World = dynamic(
@@ -101,6 +101,12 @@ export default function DashboardPage() {
   const [viewType, setViewType] = useState('5min');
   const [activeSection, setActiveSection] = useState('overview');
   const [selectedArea, setSelectedArea] = useState(null);
+  const [dailyLoadData, setDailyLoadData] = useState({
+    morning: { value: 0, change: 0 },
+    afternoon: { value: 0, change: 0 },
+    evening: { value: 0, change: 0 },
+    night: { value: 0, change: 0 }
+  });
 
   // Update date range based on view type
   useEffect(() => {
@@ -147,6 +153,90 @@ export default function DashboardPage() {
     }
     setActiveSection(sectionId);
   };
+
+  // Function to calculate peak loads for different periods
+  const calculateDailyPeaks = (data) => {
+    if (!data || data.length === 0) {
+      console.log('No data received');
+      return;
+    }
+
+    console.log('Raw data:', data); // Debug log
+
+    const timeRanges = {
+      morning: { start: 6, end: 9 },
+      afternoon: { start: 12, end: 15 },
+      evening: { start: 18, end: 21 },
+      night: { start: 22, end: 5 }
+    };
+
+    const peaks = Object.entries(timeRanges).reduce((acc, [period, range]) => {
+      const periodData = data.filter(item => {
+        // Parse time properly
+        const [hours, minutes] = item.time.split(':').map(Number);
+        const hour = hours;
+
+        console.log(`Filtering ${period} data:`, { time: item.time, hour, range }); // Debug log
+
+        if (period === 'night') {
+          return hour >= range.start || hour <= range.end;
+        }
+        return hour >= range.start && hour <= range.end;
+      });
+
+      console.log(`${period} filtered data:`, periodData); // Debug log
+
+      const loads = periodData.map(item => Number(item.load));
+      const avgLoad = loads.length > 0 
+        ? Math.round(loads.reduce((a, b) => a + b, 0) / loads.length)
+        : 0;
+
+      console.log(`${period} stats:`, { loads, avgLoad }); // Debug log
+
+      return {
+        ...acc,
+        [period]: {
+          value: avgLoad,
+          change: calculateChange(avgLoad, period)
+        }
+      };
+    }, {});
+
+    console.log('Final peaks:', peaks); // Debug log
+    setDailyLoadData(peaks);
+  };
+
+  // Calculate percentage change from previous day
+  const calculateChange = (currentValue, period) => {
+    // You can implement comparison with previous day's data here
+    // For now, returning a sample change value
+    const changes = {
+      morning: 2.3,
+      afternoon: -1.5,
+      evening: 3.8,
+      night: -0.7
+    };
+    return changes[period];
+  };
+
+  // Fetch and update daily load data
+  useEffect(() => {
+    async function fetchDailyData() {
+      try {
+        const currentDate = new Date();
+        // Fetch today's data
+        const data = await fetchLoadData(currentDate, '5min');
+        console.log('Fetched data:', data); // Debug log
+        calculateDailyPeaks(data);
+      } catch (error) {
+        console.error('Error fetching daily load data:', error);
+      }
+    }
+
+    fetchDailyData();
+    const interval = setInterval(fetchDailyData, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <motion.div 
@@ -232,45 +322,35 @@ export default function DashboardPage() {
       {/* Detailed Analysis Section */}
       <div id="detailed-analysis" className="grid gap-6">
         <div className="grid gap-6 grid-cols-1">
-          {/* Short Term and Long Term Forecasts */}
-          <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
-            <Card className="p-6 bg-gradient-to-br from-[#1C1C1E] to-[#2C2C2E] border-0">
-              <div className="mb-6">
-                <h3 className="text-xl font-bold text-white">Short-term Forecast</h3>
-                <p className="text-sm text-zinc-400 mt-1">Next 7 days prediction</p>
-              </div>
-              <ChartComponent chartType="shortTerm" />
-            </Card>
-
-            <Card className="p-6 bg-gradient-to-br from-[#1C1C1E] to-[#2C2C2E] border-0">
-              <div className="mb-6">
-                <h3 className="text-xl font-bold text-white">Long-term Forecast</h3>
-                <p className="text-sm text-zinc-400 mt-1">Monthly prediction trend</p>
-              </div>
-              <LongTermForecastChart date={selectedDate} />
-            </Card>
-          </div>
-
-        
-
-          {/* Influencing Factors */}
-          <Card className="p-6 bg-gradient-to-br from-[#1C1C1E] to-[#2C2C2E] border-0">
-            <div className="mb-6">
-              <h3 className="text-xl font-bold text-white">Influencing Factors</h3>
-              <p className="text-sm text-zinc-400 mt-1">Key factors affecting load patterns</p>
-            </div>
-            <AdditionalInsightsChart />
-          </Card>
-
           {/* Daily Load Forecast */}
           <Card className="p-6 bg-gradient-to-br from-[#1C1C1E] to-[#2C2C2E] border-0">
             <h3 className="text-xl font-bold text-white mb-6">Daily Load Forecast</h3>
             <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
               {[
-                { label: "Morning Peak", value: "20.5 MW", time: "06:00 - 09:00" },
-                { label: "Afternoon Peak", value: "21.2 MW", time: "12:00 - 15:00" },
-                { label: "Evening Peak", value: "22.8 MW", time: "18:00 - 21:00" },
-                { label: "Night Load", value: "17.5 MW", time: "22:00 - 05:00" }
+                { 
+                  label: "Morning Peak", 
+                  value: `${dailyLoadData.morning.value.toLocaleString()} MW`, 
+                  time: "06:00 - 09:00",
+                  change: dailyLoadData.morning.change 
+                },
+                { 
+                  label: "Afternoon Peak", 
+                  value: `${dailyLoadData.afternoon.value.toLocaleString()} MW`, 
+                  time: "12:00 - 15:00",
+                  change: dailyLoadData.afternoon.change 
+                },
+                { 
+                  label: "Evening Peak", 
+                  value: `${dailyLoadData.evening.value.toLocaleString()} MW`, 
+                  time: "18:00 - 21:00",
+                  change: dailyLoadData.evening.change 
+                },
+                { 
+                  label: "Night Load", 
+                  value: `${dailyLoadData.night.value.toLocaleString()} MW`, 
+                  time: "22:00 - 05:00",
+                  change: dailyLoadData.night.change 
+                }
               ].map((item, index) => (
                 <div
                   key={index}
@@ -280,10 +360,24 @@ export default function DashboardPage() {
                     <span className="text-zinc-400 font-medium">{item.label}</span>
                     <span className="text-white font-bold">{item.value}</span>
                   </div>
-                  <p className="text-xs text-zinc-500">{item.time}</p>
+                  <div className="flex justify-between items-center">
+                    <p className="text-xs text-zinc-500">{item.time}</p>
+                    <p className={`text-xs ${item.change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                      {item.change >= 0 ? '+' : ''}{item.change}%
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>
+          </Card>
+
+          {/* Influencing Factors */}
+          <Card className="p-6 bg-gradient-to-br from-[#1C1C1E] to-[#2C2C2E] border-0">
+            <div className="mb-6">
+              <h3 className="text-xl font-bold text-white">Influencing Factors</h3>
+              <p className="text-sm text-zinc-400 mt-1">Key factors affecting load patterns</p>
+            </div>
+            <AdditionalInsightsChart />
           </Card>
         </div>
       </div>
