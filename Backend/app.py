@@ -7,38 +7,45 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 # Load the CSV data once when the app starts
-historical_data = pd.read_csv('./final_test.csv')
+historical_data = pd.read_csv('./final_testing_data.csv')
 historical_data["datetime"] = pd.to_datetime(historical_data["datetime"])
+
+# Exclude specified columns
+excluded_columns = ['DELHI', 'BRPL', 'BYPL', 'NDPL', 'NDMC', 'MES', 'datetime']
+feature_columns = [col for col in historical_data.columns if col not in excluded_columns]
+
+# Set datetime as index after selecting required columns
+historical_data = historical_data[['datetime'] + feature_columns]
 historical_data.set_index("datetime", inplace=True)
 
-def create_input_sequences(timestamp, feature_scaler, sequence_length=24):
+def create_input_sequences(start_datetime, end_datetime, feature_scaler):
     """
-    Create input sequences for a model from a given timestamp.
+    Create input sequences for a model from a given date range.
     
     Parameters:
-    - timestamp (str): The input timestamp in ISO format
+    - start_datetime (str): The start timestamp in ISO format
+    - end_datetime (str): The end timestamp in ISO format
     - feature_scaler: The scaler used to normalize the features
-    - sequence_length (int): The length of each input sequence
     
     Returns:
     - X_sequences (np.ndarray): The array of input sequences for the model
     """
-    # Convert timestamp to datetime
-    end_time = pd.to_datetime(timestamp)
+    # Convert timestamps to datetime
+    start_time = pd.to_datetime(start_datetime)
+    end_time = pd.to_datetime(end_datetime)
     
-    # Calculate start time (24 hours before the input timestamp)
-    start_time = end_time - timedelta(hours=sequence_length)
-    
-    # Get the data for the 24-hour window from historical data
+    # Get the data for the specified time window from historical data
     mask = (historical_data.index >= start_time) & (historical_data.index <= end_time)
     sequence_data = historical_data[mask]
     
-    # Check if we have enough data
-    if len(sequence_data) < sequence_length:
-        raise ValueError(f"Not enough historical data available for the requested time period. Need {sequence_length} hours of data.")
+    # Check if we have data
+    if len(sequence_data) == 0:
+        raise ValueError(f"No data available for the requested time period between {start_time} and {end_time}")
     
-    # Ensure we have the correct features
-    sequence_data = sequence_data[feature_scaler.feature_names_in_]
+    # Since we're using a Sequential model, we need to manually specify the features
+    # These should match the features used during training
+    model_features = [col for col in sequence_data.columns if col not in excluded_columns]
+    sequence_data = sequence_data[model_features]
     
     # Scale the data
     scaled_data = feature_scaler.transform(sequence_data)
@@ -46,7 +53,12 @@ def create_input_sequences(timestamp, feature_scaler, sequence_length=24):
     # Convert to array and reshape for model input
     X_sequences = np.array([scaled_data])
     
-    return X_sequences
+    # Print debug information
+    print(f"Sequence data shape: {sequence_data.shape}")
+    print(f"Features used: {sequence_data.columns.tolist()}")
+    print(f"Time range: {start_time} to {end_time}")
+    
+    return X_sequences, sequence_data.index
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all domains
@@ -81,27 +93,36 @@ def predict():
         print(f"Input data received: {data}")
 
         # Validate input data
-        if not data or 'datetime' not in data:
-            print("Error: No datetime provided in input data.")
-            return jsonify({'error': 'Please provide datetime in the request'}), 400
+        if not data or 'startDateTime' not in data or 'endDateTime' not in data:
+            print("Error: Start or end datetime not provided in input data.")
+            return jsonify({'error': 'Please provide both startDateTime and endDateTime in the request'}), 400
 
         try:
-            # Create input sequences using the provided datetime
-            input_data = create_input_sequences(data['datetime'], feature_scalar)
+            # Create input sequences using the provided datetime range
+            input_data, timestamps = create_input_sequences(
+                data['startDateTime'], 
+                data['endDateTime'], 
+                feature_scalar
+            )
             
             # Make prediction
             print("Making predictions...")
-            prediction = model.predict(input_data)
-            prediction = target_scalar.inverse_transform(prediction)
+            predictions = model.predict(input_data)
+            predictions = target_scalar.inverse_transform(predictions)
             
-            # Get the timestamp for the prediction
-            prediction_timestamp = pd.to_datetime(data['datetime'])
-            
-            return jsonify({
+            # Create response with predictions for each timestamp
+            response_data = {
                 'success': True,
-                'timestamp': prediction_timestamp.isoformat(),
-                'prediction': prediction.tolist() if isinstance(prediction, np.ndarray) else prediction
-            })
+                'predictions': [
+                    {
+                        'timestamp': ts.isoformat(),
+                        'value': float(pred)
+                    }
+                    for ts, pred in zip(timestamps, predictions[0])
+                ]
+            }
+            
+            return jsonify(response_data)
             
         except ValueError as ve:
             print(f"Value Error: {str(ve)}")
