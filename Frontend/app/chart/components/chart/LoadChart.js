@@ -7,16 +7,24 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  ReferenceLine
 } from "recharts";
 import { motion } from "framer-motion";
 
-export function LoadChart({ data, viewType, itemVariants, aggregatedData }) {
-  // Filter hourly data if needed
+export function LoadChart({ data, viewType, itemVariants }) {
+  // Filter and format data based on view type
   const chartData = viewType === 'hourly' 
     ? data.filter(row => row.time.endsWith(':00'))
-    : viewType === '5min' 
-      ? data 
-      : aggregatedData;
+    : data;
+
+  // Calculate average and peak loads
+  const averageLoad = chartData.length > 0
+    ? chartData.reduce((sum, item) => sum + parseFloat(item.load), 0) / chartData.length
+    : 0;
+
+  const peakLoad = chartData.length > 0
+    ? Math.max(...chartData.map(item => parseFloat(item.load)))
+    : 0;
 
   return (
     <motion.div 
@@ -24,16 +32,16 @@ export function LoadChart({ data, viewType, itemVariants, aggregatedData }) {
       className="w-full"
       whileHover={{ scale: 1.01 }}
     >
-      <ResponsiveContainer width="100%" height={350}>
+      <ResponsiveContainer width="100%" height={400}>
         <LineChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" stroke="#555" />
           <XAxis 
-            dataKey={viewType === '5min' || viewType === 'hourly' ? "time" : "date"}
+            dataKey="time"
             stroke="#fff"
-            angle={viewType === '5min' ? 0 : -45}
+            angle={viewType === '5min' ? -45 : 0}
             textAnchor="end"
             height={60}
-            interval={viewType === 'hourly' ? 0 : 'preserveStartEnd'}
+            interval={viewType === '5min' ? 11 : 'preserveStartEnd'}
             tick={{ fill: '#fff' }}
           />
           <YAxis 
@@ -45,6 +53,7 @@ export function LoadChart({ data, viewType, itemVariants, aggregatedData }) {
               fill: '#fff' 
             }}
             tick={{ fill: '#fff' }}
+            domain={[0, 'auto']}
           />
           <Tooltip 
             contentStyle={{ 
@@ -54,41 +63,46 @@ export function LoadChart({ data, viewType, itemVariants, aggregatedData }) {
               boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
               color: '#fff'
             }}
+            labelFormatter={(label) => `Time: ${label}`}
+            formatter={(value) => [`${parseFloat(value).toFixed(2)} MW`]}
           />
           <Legend />
+          
+          {/* Average Load Reference Line */}
+          <ReferenceLine 
+            y={averageLoad} 
+            stroke="#ffc658" 
+            strokeDasharray="3 3"
+            label={{ 
+              value: `Avg: ${averageLoad.toFixed(2)} MW`,
+              fill: '#ffc658',
+              position: 'right'
+            }}
+          />
+
+          {/* Peak Load Reference Line */}
+          <ReferenceLine 
+            y={peakLoad} 
+            stroke="#ff4d4f" 
+            strokeDasharray="3 3"
+            label={{ 
+              value: `Peak: ${peakLoad.toFixed(2)} MW`,
+              fill: '#ff4d4f',
+              position: 'right'
+            }}
+          />
           
           <Line
             type="monotone"
             dataKey="load"
             stroke="#8884d8"
-            name="Total Load"
+            name="Load (MW)"
             strokeWidth={2}
             dot={viewType !== '5min'}
             activeDot={{ r: 6, strokeWidth: 0 }}
-          />
-          <Line
-            type="monotone"
-            dataKey="brpl"
-            stroke="#82ca9d"
-            name="BRPL"
-            strokeWidth={1}
-            dot={viewType !== '5min'}
-          />
-          <Line
-            type="monotone"
-            dataKey="bypl"
-            stroke="#ffc658"
-            name="BYPL"
-            strokeWidth={1}
-            dot={viewType !== '5min'}
-          />
-          <Line
-            type="monotone"
-            dataKey="ndpl"
-            stroke="#ff8042"
-            name="NDPL"
-            strokeWidth={1}
-            dot={viewType !== '5min'}
+            isAnimationActive={true}
+            animationDuration={1000}
+            animationEasing="ease-in-out"
           />
         </LineChart>
       </ResponsiveContainer>
