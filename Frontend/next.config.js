@@ -1,10 +1,20 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ['images.unsplash.com', 'assets.aceternity.com'],
+    domains: ['images.unsplash.com', 'assets.aceternity.com', 'img.clerk.com'],
   },
-  experimental: {
-    middlewareTracing: true, // Enables middleware tracing for debugging
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            key: "Cross-Origin-Opener-Policy",
+            value: "same-origin",
+          },
+        ],
+      },
+    ];
   },
 };
 

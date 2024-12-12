@@ -1,26 +1,14 @@
-import { clerkMiddleware } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { clerkMiddleware } from '@clerk/nextjs/server';
 
-const publicPaths = ["/", "/sign-in*", "/sign-up*", "/api/load-data"];
-
-function isPublic(path) {
-  return publicPaths.some((x) =>
-    path.match(new RegExp(`^${x}$`.replace("*$", "($|/)")))
-  );
-}
+export default clerkMiddleware();
 
 export const config = {
-  matcher: ["/((?!static|.*\\..*|_next|favicon.ico).*)", "/"],
-  runtime: "edge", // Explicitly specify Edge Runtime
+  matcher: [
+    // Skip Next.js internals and all static files, unless found in search params
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
+    '/(api|trpc)(.*)'
+    
+    ,
+  ],
 };
-
-export default clerkMiddleware((request) => {
-  const url = request.nextUrl || new URL(request.url); // Fallback
-  const { pathname } = url;
-
-  if (isPublic(pathname)) {
-    return NextResponse.next();
-  }
-
-  return NextResponse.redirect("/sign-in");
-});
