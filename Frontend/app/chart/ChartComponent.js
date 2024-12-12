@@ -316,9 +316,7 @@ export default function ChartComponent({
         viewType={viewType}
       />
 
-      {viewType === '5min' && (
-        <TimeNavigation onTimeChange={handleTimeChange} />
-      )}
+     
 
       <ViewControls 
         viewType={viewType}

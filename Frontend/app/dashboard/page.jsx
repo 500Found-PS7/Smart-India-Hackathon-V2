@@ -87,14 +87,15 @@ const TimeDisplay = () => {
 
 export default function DashboardPage() {
   // Initialize dates properly
-  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const defaultDate = new Date(2023, 7, 10); // August 10, 2023
+  const [selectedDate, setSelectedDate] = useState(() => defaultDate);
   const [startDate, setStartDate] = useState(() => {
-    const date = new Date();
+    const date = new Date(defaultDate);
     date.setHours(0, 0, 0, 0);
     return date;
   });
   const [endDate, setEndDate] = useState(() => {
-    const date = new Date();
+    const date = new Date(defaultDate);
     date.setHours(23, 59, 59, 999);
     return date;
   });
@@ -273,16 +274,6 @@ export default function DashboardPage() {
             Overview
           </Button>
           <Button 
-            onClick={() => scrollToSection('globe-view')}
-            className={cn(
-              "bg-slate-900/80 hover:bg-slate-800/80 text-white transition-all duration-300",
-              activeSection === 'globe-view' && "bg-blue-600/30 hover:bg-blue-600/40"
-            )}
-          >
-            <GlobeIcon className="w-4 h-4 mr-2" />
-            Globe View
-          </Button>
-          <Button 
             onClick={() => scrollToSection('detailed-analysis')}
             className={cn(
               "bg-slate-900/80 hover:bg-slate-800/80 text-white transition-all duration-300",
@@ -322,54 +313,7 @@ export default function DashboardPage() {
       {/* Detailed Analysis Section */}
       <div id="detailed-analysis" className="grid gap-6">
         <div className="grid gap-6 grid-cols-1">
-          {/* Daily Load Forecast */}
-          <Card className="p-6 bg-gradient-to-br from-[#1C1C1E] to-[#2C2C2E] border-0">
-            <h3 className="text-xl font-bold text-white mb-6">Daily Load Forecast</h3>
-            <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
-              {[
-                { 
-                  label: "Morning Peak", 
-                  value: `${dailyLoadData.morning.value.toLocaleString()} MW`, 
-                  time: "06:00 - 09:00",
-                  change: dailyLoadData.morning.change 
-                },
-                { 
-                  label: "Afternoon Peak", 
-                  value: `${dailyLoadData.afternoon.value.toLocaleString()} MW`, 
-                  time: "12:00 - 15:00",
-                  change: dailyLoadData.afternoon.change 
-                },
-                { 
-                  label: "Evening Peak", 
-                  value: `${dailyLoadData.evening.value.toLocaleString()} MW`, 
-                  time: "18:00 - 21:00",
-                  change: dailyLoadData.evening.change 
-                },
-                { 
-                  label: "Night Load", 
-                  value: `${dailyLoadData.night.value.toLocaleString()} MW`, 
-                  time: "22:00 - 05:00",
-                  change: dailyLoadData.night.change 
-                }
-              ].map((item, index) => (
-                <div
-                  key={index}
-                  className="p-4 rounded-lg bg-gradient-to-br from-[#2C2C2E] to-[#3C3C3E] hover:from-[#3C3C3E] hover:to-[#4C4C4E] transition-all duration-300"
-                >
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-zinc-400 font-medium">{item.label}</span>
-                    <span className="text-white font-bold">{item.value}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <p className="text-xs text-zinc-500">{item.time}</p>
-                    <p className={`text-xs ${item.change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                      {item.change >= 0 ? '+' : ''}{item.change}%
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
+          
 
           {/* Influencing Factors */}
           <Card className="p-6 bg-gradient-to-br from-[#1C1C1E] to-[#2C2C2E] border-0">

@@ -9,8 +9,12 @@ import {
 } from "@/components/ui/popover";
 
 export function DateControls({ selectedDate, onDateChange }) {
+  // Set default date to August 10, 2023 if no date provided
+  const defaultDate = new Date(2023, 7, 10);
+  const dateToUse = selectedDate || defaultDate;
+
   const handleDateChange = (days) => {
-    const newDate = new Date(selectedDate);
+    const newDate = new Date(dateToUse);
     newDate.setDate(newDate.getDate() + days);
     onDateChange(newDate);
   };
@@ -31,15 +35,16 @@ export function DateControls({ selectedDate, onDateChange }) {
             className={`w-[240px] justify-start text-left font-normal bg-blue-500/20 hover:bg-blue-500/30 text-white`}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
-            {format(selectedDate, 'dd MMMM yyyy')}
+            {format(dateToUse, 'dd MMMM yyyy')}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0 bg-zinc-950 border-zinc-800">
           <Calendar
             mode="single"
-            selected={selectedDate}
+            selected={dateToUse}
             onSelect={(date) => date && onDateChange(date)}
             initialFocus
+            defaultMonth={defaultDate}
           />
         </PopoverContent>
       </Popover>
@@ -52,4 +57,4 @@ export function DateControls({ selectedDate, onDateChange }) {
       </Button>
     </div>
   );
-} 
+}
