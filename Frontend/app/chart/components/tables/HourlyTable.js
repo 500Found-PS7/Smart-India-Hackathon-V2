@@ -10,11 +10,6 @@ export function HourlyTable({ data }) {
           <tr>
             <th className="text-left p-2 text-zinc-400">Hour</th>
             <th className="text-right p-2 text-zinc-400">Load</th>
-            <th className="text-right p-2 text-zinc-400">BRPL</th>
-            <th className="text-right p-2 text-zinc-400">BYPL</th>
-            <th className="text-right p-2 text-zinc-400">NDPL</th>
-            <th className="text-right p-2 text-zinc-400">NDMC</th>
-            <th className="text-right p-2 text-zinc-400">MES</th>
           </tr>
         </thead>
         <tbody>
@@ -25,15 +20,10 @@ export function HourlyTable({ data }) {
             >
               <td className="p-2 text-left">{row.time}</td>
               <td className="p-2 text-right">{row.load.toLocaleString()}</td>
-              <td className="p-2 text-right">{row.brpl.toLocaleString()}</td>
-              <td className="p-2 text-right">{row.bypl.toLocaleString()}</td>
-              <td className="p-2 text-right">{row.ndpl.toLocaleString()}</td>
-              <td className="p-2 text-right">{row.ndmc.toLocaleString()}</td>
-              <td className="p-2 text-right">{row.mes.toLocaleString()}</td>
             </tr>
           ))}
         </tbody>
       </Table>
     </div>
   );
-} 
+}

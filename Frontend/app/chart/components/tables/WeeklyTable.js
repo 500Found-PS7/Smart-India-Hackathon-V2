@@ -8,30 +8,26 @@ export function WeeklyTable({ data }) {
           <tr>
             <th className="text-left p-2 text-zinc-400">Date</th>
             <th className="text-right p-2 text-zinc-400">Avg Load</th>
-            <th className="text-right p-2 text-zinc-400">Avg BRPL</th>
-            <th className="text-right p-2 text-zinc-400">Avg BYPL</th>
-            <th className="text-right p-2 text-zinc-400">Avg NDPL</th>
-            <th className="text-right p-2 text-zinc-400">Avg NDMC</th>
-            <th className="text-right p-2 text-zinc-400">Avg MES</th>
           </tr>
         </thead>
         <tbody>
-          {data.map((row, index) => (
+          {data?.map((row, index) => (
             <tr 
               key={index}
               className="border-t border-zinc-800 hover:bg-zinc-800/50 transition-colors"
             >
               <td className="p-2 text-left font-medium">{row.date}</td>
               <td className="p-2 text-right">{row.load.toLocaleString()}</td>
-              <td className="p-2 text-right">{row.brpl.toLocaleString()}</td>
-              <td className="p-2 text-right">{row.bypl.toLocaleString()}</td>
-              <td className="p-2 text-right">{row.ndpl.toLocaleString()}</td>
-              <td className="p-2 text-right">{row.ndmc.toLocaleString()}</td>
-              <td className="p-2 text-right">{row.mes.toLocaleString()}</td>
             </tr>
-          ))}
+          )) || (
+            <tr>
+              <td colSpan={2} className="p-2 text-center text-zinc-500">
+                No data available
+              </td>
+            </tr>
+          )}
         </tbody>
       </Table>
     </div>
   );
-} 
+}

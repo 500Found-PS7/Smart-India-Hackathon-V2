@@ -30,20 +30,8 @@ const routes = [
   {
     label: "AI Assistant",
     icon: MessageSquare,
-    href: "/dashboard/calendar",
+    href: "/dashboard/ai-insights",
     color: "text-violet-500",
-  },
-  {
-    label: "Forecast",
-    icon: LineChart,
-    href: "/dashboard/forecast",
-    color: "text-orange-500",
-  },
-  {
-    label: "Globe View",
-    icon: Globe2,
-    href: "/dashboard/globe",
-    color: "text-emerald-500",
   },
   {
     label: "Settings",
