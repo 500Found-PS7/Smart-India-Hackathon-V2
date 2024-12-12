@@ -161,7 +161,6 @@ export function Sidebar({ isSidebarOpen, toggleSidebar }) {
               animate={{ scale: 1 }}
               exit={{ scale: 0.8 }}
             >
-              
               <p className="text-xs text-zinc-400">System Status</p>
               <div className="mt-3 flex items-center gap-3">
                 <div className="h-2 w-2 rounded-full bg-green-500" />
