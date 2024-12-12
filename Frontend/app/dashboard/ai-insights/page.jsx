@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { LineChart, Brain, AlertCircle, TrendingUp, Loader, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { LineChart, Brain, AlertCircle, TrendingUp, Loader, Calendar, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Download, Share2 } from "lucide-react";
 import { DataInsights } from "../../component/DataInsights";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval } from "date-fns";
 import { WeeklyTable } from "../../chart/components/tables/WeeklyTable";
@@ -28,36 +28,44 @@ const formatNumber = (value) => {
 
 // Helper function to prepare weekly data
 const prepareWeeklyData = (data, selectedDate) => {
+  const weekStart = startOfWeek(selectedDate);
+  const weekEnd = endOfWeek(selectedDate);
+  const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
+  
   if (!data || data.length === 0) {
-    const weekStart = startOfWeek(selectedDate);
-    const weekEnd = endOfWeek(selectedDate);
-    const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
-    
     return days.map(day => ({
       date: format(day, 'yyyy-MM-dd'),
       load: formatNumber(0)
     }));
   }
 
-  // Group data by date and calculate averages
-  const groupedData = data.reduce((acc, item) => {
-    const date = item.date;
-    if (!acc[date]) {
-      acc[date] = {
-        count: 0,
-        load: 0
-      };
-    }
-    acc[date].count++;
-    acc[date].load += item.load.value;
+  // Create a map of all days in the week with initial zero values
+  const weekMap = days.reduce((acc, day) => {
+    acc[format(day, 'yyyy-MM-dd')] = {
+      count: 0,
+      load: 0
+    };
     return acc;
   }, {});
 
+  // Group data by date and calculate averages
+  data.forEach(item => {
+    const date = format(new Date(item.date), 'yyyy-MM-dd');
+    if (weekMap[date]) {
+      weekMap[date].count++;
+      weekMap[date].load += item.load.value;
+    }
+  });
+
   // Calculate averages and format data
-  return Object.entries(groupedData).map(([date, values]) => ({
-    date,
-    load: formatNumber(values.load / values.count)
-  }));
+  return days.map(day => {
+    const date = format(day, 'yyyy-MM-dd');
+    const dayData = weekMap[date];
+    return {
+      date,
+      load: formatNumber(dayData.count > 0 ? dayData.load / dayData.count : 0)
+    };
+  });
 };
 
 export default function AIInsightsPage() {
@@ -67,6 +75,11 @@ export default function AIInsightsPage() {
   const [weeklyData, setWeeklyData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [expandedSections, setExpandedSections] = useState({
+    currentLoad: true,
+    distribution: true,
+    recommendations: true
+  });
 
   // Effect to fetch data when date or view type changes
   useEffect(() => {
@@ -75,8 +88,12 @@ export default function AIInsightsPage() {
         setIsLoading(true);
         setError(null);
 
+        // Get the week start and end dates
+        const weekStart = startOfWeek(selectedDate);
+        const weekEnd = endOfWeek(selectedDate);
+
         const response = await axios.get(
-          `/api/load-data?date=${selectedDate.toISOString()}&interval=${viewType}`
+          `/api/load-data?date=${selectedDate.toISOString()}&interval=${viewType}&weekStart=${weekStart.toISOString()}&weekEnd=${weekEnd.toISOString()}`
         );
 
         if (response.data.error) {
@@ -92,7 +109,7 @@ export default function AIInsightsPage() {
           ndpl: formatNumber(item.ndpl),
           ndmc: formatNumber(item.ndmc),
           mes: formatNumber(item.mes),
-          date: format(selectedDate, 'yyyy-MM-dd')
+          date: item.date || format(selectedDate, 'yyyy-MM-dd')
         })) : [];
 
         // Ensure we have data for tables
@@ -111,7 +128,7 @@ export default function AIInsightsPage() {
 
         setLoadData(processedData);
         
-        // Prepare weekly data
+        // Prepare weekly data using the entire week's data
         const weekly = prepareWeeklyData(processedData, selectedDate);
         setWeeklyData(weekly);
 
@@ -173,6 +190,33 @@ export default function AIInsightsPage() {
 
   const handleViewTypeChange = (type) => {
     setViewType(type);
+    // Store the view type in localStorage to persist across components
+    localStorage.setItem('dashboardViewType', type);
+  };
+
+  // Add useEffect to initialize view type from localStorage
+  useEffect(() => {
+    const savedViewType = localStorage.getItem('dashboardViewType');
+    if (savedViewType) {
+      setViewType(savedViewType);
+    }
+  }, []);
+
+  const toggleSection = (section) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
+
+  const handleDownload = (section) => {
+    // Implement download logic for the specific section
+    console.log(`Downloading ${section} data...`);
+  };
+
+  const handleShare = (section) => {
+    // Implement share logic for the specific section
+    console.log(`Sharing ${section} data...`);
   };
 
   if (isLoading) {
@@ -257,25 +301,52 @@ export default function AIInsightsPage() {
           transition={{ duration: 0.5 }}
         >
           <Card className="p-6 bg-zinc-900/50 border-zinc-800/50">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 rounded-lg bg-blue-500/10">
-                <LineChart className="w-5 h-5 text-blue-500" />
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-blue-500/10">
+                  <LineChart className="w-5 h-5 text-blue-500" />
+                </div>
+                <h2 className="text-lg font-semibold text-white">Current Load Patterns</h2>
               </div>
-              <h2 className="text-lg font-semibold text-white">Current Load Patterns</h2>
-            </div>
-            <div className="space-y-6">
-              <DataInsights
-                data={prepareLoadAnalysis()}
-                type="currentLoad"
-                className="bg-black/20"
-              />
-              <div className="mt-6">
-                <h3 className="text-lg font-semibold text-white mb-4">Weekly Overview</h3>
-                {weeklyData && weeklyData.length > 0 && (
-                  <WeeklyTable data={weeklyData} />
-                )}
+              <div className="flex items-center gap-2">
+                <button
+                  className="p-2 hover:bg-zinc-800 rounded-lg transition-colors"
+                  onClick={() => toggleSection('currentLoad')}
+                >
+                  {expandedSections.currentLoad ? 
+                    <ChevronUp className="w-5 h-5 text-zinc-400" /> : 
+                    <ChevronDown className="w-5 h-5 text-zinc-400" />
+                  }
+                </button>
+                <button 
+                  className="p-2 hover:bg-zinc-800 rounded-lg transition-colors"
+                  onClick={() => handleDownload('currentLoad')}
+                >
+                  <Download className="w-5 h-5 text-zinc-400" />
+                </button>
+                <button 
+                  className="p-2 hover:bg-zinc-800 rounded-lg transition-colors"
+                  onClick={() => handleShare('currentLoad')}
+                >
+                  <Share2 className="w-5 h-5 text-zinc-400" />
+                </button>
               </div>
             </div>
+            {expandedSections.currentLoad && (
+              <div className="space-y-6">
+                <DataInsights
+                  data={prepareLoadAnalysis()}
+                  type="currentLoad"
+                  className="bg-black/20"
+                />
+                <div className="mt-6">
+                  <h3 className="text-lg font-semibold text-white mb-4">Weekly Overview</h3>
+                  {weeklyData && weeklyData.length > 0 && (
+                    <WeeklyTable data={weeklyData} />
+                  )}
+                </div>
+              </div>
+            )}
           </Card>
         </motion.div>
 
@@ -286,46 +357,73 @@ export default function AIInsightsPage() {
           transition={{ duration: 0.5, delay: 0.2 }}
         >
           <Card className="p-6 bg-zinc-900/50 border-zinc-800/50">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 rounded-lg bg-purple-500/10">
-                <TrendingUp className="w-5 h-5 text-purple-500" />
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-purple-500/10">
+                  <TrendingUp className="w-5 h-5 text-purple-500" />
+                </div>
+                <h2 className="text-lg font-semibold text-white">Distribution Analysis</h2>
               </div>
-              <h2 className="text-lg font-semibold text-white">Distribution Analysis</h2>
-            </div>
-            <div className="space-y-6">
-              <DataInsights
-                data={{
-                  type: "distribution",
-                  summary: {
-                    companies: {
-                      brpl: {
-                        average: formatNumber(loadData.reduce((sum, d) => sum + d.brpl.value, 0) / loadData.length),
-                        peak: formatNumber(Math.max(...loadData.map(d => d.brpl.value)))
-                      },
-                      bypl: {
-                        average: formatNumber(loadData.reduce((sum, d) => sum + d.bypl.value, 0) / loadData.length),
-                        peak: formatNumber(Math.max(...loadData.map(d => d.bypl.value)))
-                      },
-                      ndpl: {
-                        average: formatNumber(loadData.reduce((sum, d) => sum + d.ndpl.value, 0) / loadData.length),
-                        peak: formatNumber(Math.max(...loadData.map(d => d.ndpl.value)))
-                      }
-                    },
-                    timestamp: format(selectedDate, 'dd MMM yyyy'),
-                    data: loadData,
-                    weeklyData: weeklyData
+              <div className="flex items-center gap-2">
+                <button
+                  className="p-2 hover:bg-zinc-800 rounded-lg transition-colors"
+                  onClick={() => toggleSection('distribution')}
+                >
+                  {expandedSections.distribution ? 
+                    <ChevronUp className="w-5 h-5 text-zinc-400" /> : 
+                    <ChevronDown className="w-5 h-5 text-zinc-400" />
                   }
-                }}
-                type="distribution"
-                className="bg-black/20"
-              />
-              <div className="mt-6">
-                <h3 className="text-lg font-semibold text-white mb-4">Weekly Distribution</h3>
-                {weeklyData && weeklyData.length > 0 && (
-                  <WeeklyTable data={weeklyData} />
-                )}
+                </button>
+                <button 
+                  className="p-2 hover:bg-zinc-800 rounded-lg transition-colors"
+                  onClick={() => handleDownload('distribution')}
+                >
+                  <Download className="w-5 h-5 text-zinc-400" />
+                </button>
+                <button 
+                  className="p-2 hover:bg-zinc-800 rounded-lg transition-colors"
+                  onClick={() => handleShare('distribution')}
+                >
+                  <Share2 className="w-5 h-5 text-zinc-400" />
+                </button>
               </div>
             </div>
+            {expandedSections.distribution && (
+              <div className="space-y-6">
+                <DataInsights
+                  data={{
+                    type: "distribution",
+                    summary: {
+                      companies: {
+                        brpl: {
+                          average: formatNumber(loadData.reduce((sum, d) => sum + d.brpl.value, 0) / loadData.length),
+                          peak: formatNumber(Math.max(...loadData.map(d => d.brpl.value)))
+                        },
+                        bypl: {
+                          average: formatNumber(loadData.reduce((sum, d) => sum + d.bypl.value, 0) / loadData.length),
+                          peak: formatNumber(Math.max(...loadData.map(d => d.bypl.value)))
+                        },
+                        ndpl: {
+                          average: formatNumber(loadData.reduce((sum, d) => sum + d.ndpl.value, 0) / loadData.length),
+                          peak: formatNumber(Math.max(...loadData.map(d => d.ndpl.value)))
+                        }
+                      },
+                      timestamp: format(selectedDate, 'dd MMM yyyy'),
+                      data: loadData,
+                      weeklyData: weeklyData
+                    }
+                  }}
+                  type="distribution"
+                  className="bg-black/20"
+                />
+                <div className="mt-6">
+                  <h3 className="text-lg font-semibold text-white mb-4">Weekly Distribution</h3>
+                  {weeklyData && weeklyData.length > 0 && (
+                    <WeeklyTable data={weeklyData} />
+                  )}
+                </div>
+              </div>
+            )}
           </Card>
         </motion.div>
 
@@ -336,45 +434,66 @@ export default function AIInsightsPage() {
           transition={{ duration: 0.5, delay: 0.4 }}
         >
           <Card className="p-6 bg-zinc-900/50 border-zinc-800/50">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 rounded-lg bg-green-500/10">
-                <Brain className="w-5 h-5 text-green-500" />
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-green-500/10">
+                  <Brain className="w-5 h-5 text-green-500" />
+                </div>
+                <h2 className="text-lg font-semibold text-white">Smart Recommendations</h2>
               </div>
-              <h2 className="text-lg font-semibold text-white">Smart Recommendations</h2>
-            </div>
-            <div className="space-y-6">
-              <DataInsights
-                data={{
-                  type: "recommendations",
-                  summary: {
-                    patterns: {
-                      peak: {
-                        load: formatNumber(Math.max(...loadData.map(d => d.load.value))),
-                        time: loadData.find(d => d.load.value === Math.max(...loadData.map(d => d.load.value)))?.time || "00:00"
-                      },
-                      average: formatNumber(loadData.reduce((sum, d) => sum + d.load.value, 0) / loadData.length),
-                      distribution: {
-                        brpl: formatNumber(loadData.reduce((sum, d) => sum + d.brpl.value, 0) / loadData.length),
-                        bypl: formatNumber(loadData.reduce((sum, d) => sum + d.bypl.value, 0) / loadData.length),
-                        ndpl: formatNumber(loadData.reduce((sum, d) => sum + d.ndpl.value, 0) / loadData.length)
-                      }
-                    },
-                    timeRange: viewType,
-                    date: format(selectedDate, 'dd MMM yyyy'),
-                    data: loadData,
-                    weeklyData: weeklyData
+              <div className="flex items-center gap-2">
+                <button
+                  className="p-2 hover:bg-zinc-800 rounded-lg transition-colors"
+                  onClick={() => toggleSection('recommendations')}
+                >
+                  {expandedSections.recommendations ? 
+                    <ChevronUp className="w-5 h-5 text-zinc-400" /> : 
+                    <ChevronDown className="w-5 h-5 text-zinc-400" />
                   }
-                }}
-                type="recommendations"
-                className="bg-black/20"
-              />
-              <div className="mt-6">
-                <h3 className="text-lg font-semibold text-white mb-4">Weekly Trends</h3>
-                {weeklyData && weeklyData.length > 0 && (
-                  <WeeklyTable data={weeklyData} />
-                )}
+                </button>
+                <button className="p-2 hover:bg-zinc-800 rounded-lg transition-colors">
+                  <Download className="w-5 h-5 text-zinc-400" />
+                </button>
+                <button className="p-2 hover:bg-zinc-800 rounded-lg transition-colors">
+                  <Share2 className="w-5 h-5 text-zinc-400" />
+                </button>
               </div>
             </div>
+            {expandedSections.recommendations && (
+              <div className="space-y-6">
+                <DataInsights
+                  data={{
+                    type: "recommendations",
+                    summary: {
+                      patterns: {
+                        peak: {
+                          load: formatNumber(Math.max(...loadData.map(d => d.load.value))),
+                          time: loadData.find(d => d.load.value === Math.max(...loadData.map(d => d.load.value)))?.time || "00:00"
+                        },
+                        average: formatNumber(loadData.reduce((sum, d) => sum + d.load.value, 0) / loadData.length),
+                        distribution: {
+                          brpl: formatNumber(loadData.reduce((sum, d) => sum + d.brpl.value, 0) / loadData.length),
+                          bypl: formatNumber(loadData.reduce((sum, d) => sum + d.bypl.value, 0) / loadData.length),
+                          ndpl: formatNumber(loadData.reduce((sum, d) => sum + d.ndpl.value, 0) / loadData.length)
+                        }
+                      },
+                      timeRange: viewType,
+                      date: format(selectedDate, 'dd MMM yyyy'),
+                      data: loadData,
+                      weeklyData: weeklyData
+                    }
+                  }}
+                  type="recommendations"
+                  className="bg-black/20"
+                />
+                <div className="mt-6">
+                  <h3 className="text-lg font-semibold text-white mb-4">Weekly Trends</h3>
+                  {weeklyData && weeklyData.length > 0 && (
+                    <WeeklyTable data={weeklyData} />
+                  )}
+                </div>
+              </div>
+            )}
           </Card>
         </motion.div>
       </div>

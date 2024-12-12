@@ -11,8 +11,8 @@ import { cn } from "@/lib/utils";
 import { CalendarIcon, Clock } from "lucide-react";
 
 export function DateTimeRangePicker({
-  startDate,
-  endDate,
+  startDate = new Date(2024, 3, 8), // Default to April 8, 2024
+  endDate = new Date(2024, 3, 8), // Default to April 8, 2024
   onStartDateChange,
   onEndDateChange,
   className,

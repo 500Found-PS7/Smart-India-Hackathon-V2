@@ -96,13 +96,28 @@ export function LoadChart({ data, viewType, itemVariants }) {
             type="monotone"
             dataKey="load"
             stroke="#8884d8"
-            name="Load (MW)"
+            name="Predicted Load (MW)"
             strokeWidth={2}
             dot={viewType !== '5min'}
             activeDot={{ r: 6, strokeWidth: 0 }}
             isAnimationActive={true}
             animationDuration={1000}
             animationEasing="ease-in-out"
+          />
+          
+          {/* Actual Load Line from Delhi SLDC */}
+          <Line
+            type="monotone"
+            dataKey="actualLoad"
+            stroke="#90EE90"
+            name="Actual Load (MW)"
+            strokeWidth={2}
+            dot={viewType !== '5min'}
+            activeDot={{ r: 6, strokeWidth: 0 }}
+            isAnimationActive={true}
+            animationDuration={1000}
+            animationEasing="ease-in-out"
+            strokeDasharray="5 5"
           />
         </LineChart>
       </ResponsiveContainer>

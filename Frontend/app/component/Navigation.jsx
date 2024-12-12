@@ -4,9 +4,11 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { SignOutButton, useUser } from "@clerk/nextjs";
 
 export function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { isSignedIn, user } = useUser();
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -26,9 +28,6 @@ export function Navigation() {
                 className="object-contain"
               />
             </div>
-            {/* <span className="ml-3 text-white text-base font-semibold hidden sm:block">
-              Ministry of Power
-            </span> */}
           </div>
           <div className="hidden md:block">
             <div className="ml-10 flex items-baseline space-x-4">
@@ -38,9 +37,31 @@ export function Navigation() {
               <Link href="/forecast" className="text-white hover:text-primary hover:font-bold transition-all cursor-pointer hover:scale-110">
                 Forecast
               </Link>
-              <Button className="bg-white text-black px-3 sm:px-6 py-1 sm:py-2 text-sm sm:text-base font-bold rounded-md">
-                Login
-              </Button>
+              {isSignedIn ? (
+                <div className="flex items-center gap-4">
+                  <span className="text-white">
+                    Welcome, {user.firstName || user.username}
+                  </span>
+                  <SignOutButton>
+                    <Button className="bg-red-500 hover:bg-red-600 text-white px-3 sm:px-6 py-1 sm:py-2 text-sm sm:text-base font-bold rounded-md">
+                      Sign Out
+                    </Button>
+                  </SignOutButton>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Link href="/sign-in">
+                    <Button className="bg-white text-black px-3 sm:px-6 py-1 sm:py-2 text-sm sm:text-base font-bold rounded-md hover:bg-gray-100">
+                      Sign In
+                    </Button>
+                  </Link>
+                  <Link href="/sign-up">
+                    <Button className="bg-blue-500 hover:bg-blue-600 text-white px-3 sm:px-6 py-1 sm:py-2 text-sm sm:text-base font-bold rounded-md">
+                      Sign Up
+                    </Button>
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
           <div className="-mr-2 flex md:hidden">
@@ -99,9 +120,31 @@ export function Navigation() {
             <Link href="/forecast" className="text-white block px-3 py-2 rounded-md text-base font-medium hover:text-primary hover:font-bold transition-all">
               Forecast
             </Link>
-            <Button className="bg-white text-black px-3 py-2 mt-2 w-full text-base font-bold rounded-md">
-              Login
-            </Button>
+            {isSignedIn ? (
+              <div className="space-y-2">
+                <span className="text-white block px-3 py-2">
+                  Welcome, {user.firstName || user.username}
+                </span>
+                <SignOutButton>
+                  <Button className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 w-full text-base font-bold rounded-md">
+                    Sign Out
+                  </Button>
+                </SignOutButton>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Link href="/sign-in">
+                  <Button className="bg-white text-black px-3 py-2 w-full text-base font-bold rounded-md hover:bg-gray-100">
+                    Sign In
+                  </Button>
+                </Link>
+                <Link href="/sign-up">
+                  <Button className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 w-full text-base font-bold rounded-md">
+                    Sign Up
+                  </Button>
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       )}
